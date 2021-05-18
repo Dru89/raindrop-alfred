@@ -1,0 +1,24 @@
+{
+  "name": "@dru89/raindrop-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "> TODO: description",
+  "author": "Drew Hays <me@dru89.com>",
+  "homepage": "",
+  "license": "ISC",
+  "main": "lib/raindrop-api.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "dependencies": {
+    "axios": "^0.21.1"
+  }
+}
