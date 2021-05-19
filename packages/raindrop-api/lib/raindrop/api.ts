@@ -31,7 +31,8 @@ import {
 } from './models';
 
 import ErrorWithCause from '../ErrorWithCause';
-import { isFile } from '../utils/file';
+import { isFile, touch } from '../utils/file';
+import throttle from '../utils/throttle';
 
 interface Credentials {
   clientId: string;
@@ -41,6 +42,7 @@ interface Credentials {
 interface ClientOptions {
   cache?: boolean | string;
   ttl?: number;
+  throttle?: number;
   credentials: Credentials;
   redirectUri: string;
 }
@@ -103,6 +105,13 @@ export class RaindropClient {
       baseURL: 'https://api.raindrop.io/rest/v1',
       cancelToken: this.#cancelToken.token,
     });
+  }
+
+  createAuthUrl(): string {
+    return `https://raindrop.io/oauth/authorize?${qs.stringify({
+      redirect_uri: this.#redirectUri,
+      client_id: this.#clientId,
+    })}`;
   }
 
   needsRefresh(): boolean {
@@ -520,6 +529,7 @@ const cacheKey = (method: string, path: string, config?: AxiosRequestConfig) =>
 export class CachedRaindropClient extends RaindropClient {
   #cacheFile: string;
   #ttl: number;
+  #throttle: number;
   #cache: Cache;
 
   constructor(
@@ -527,21 +537,40 @@ export class CachedRaindropClient extends RaindropClient {
     clientSecret: string,
     redirectUri: string,
     cacheFile: string,
-    ttl: number
+    ttl: number,
+    throttleTime: number
   ) {
     super(clientId, clientSecret, redirectUri);
     this.#cacheFile = cacheFile;
     this.#ttl = ttl;
+    this.#throttle = throttleTime;
     this.#cache = { data: {} };
   }
 
   async initialize(): Promise<void> {
     const file = this.#cacheFile;
+    console.log('checking for file', file);
     if (!(await isFile(file))) {
+      console.log('no file!');
       await fs.mkdir(dirname(file), { recursive: true });
+      await touch(file);
+    } else {
+      console.log('file was found!');
       const buffer = await fs.readFile(file);
       this.#cache = JSON.parse(buffer.toString('utf8')) as Cache;
     }
+  }
+
+  writeCache(): void {
+    throttle(() => {
+      return fs.writeFile(
+        this.#cacheFile,
+        JSON.stringify(this.#cache, undefined, 2),
+        {
+          encoding: 'utf8',
+        }
+      );
+    }, this.#throttle);
   }
 
   cacheGet<Response>(
@@ -571,12 +600,14 @@ export class CachedRaindropClient extends RaindropClient {
         data,
         expires: Date.now() + this.#ttl,
       };
+      this.writeCache();
     }
   }
 
   storeToken(response: AccessTokenResponse): void {
     super.storeToken(response);
     this.#cache.token = this.token;
+    this.writeCache();
   }
 
   async get<Response>(
@@ -653,22 +684,29 @@ export class CachedRaindropClient extends RaindropClient {
 
 const DEFAULT_CACHE_FILE = `${homedir()}/.local/config/pennyworth`;
 const DEFAULT_TTL = 5 * 60 * 1000;
+const DEFAULT_THROTTLE = 15 * 1000;
 export async function createClient({
   cache = true,
   ttl = DEFAULT_TTL,
+  throttle: throttleTime = DEFAULT_THROTTLE,
   credentials,
   redirectUri,
 }: ClientOptions): Promise<RaindropClient> {
+  console.log('baaaaar');
   if (cache) {
     const file = typeof cache === 'string' ? cache : DEFAULT_CACHE_FILE;
+    console.log('pre-new');
     const client = new CachedRaindropClient(
       credentials.clientId,
       credentials.clientSecret,
       redirectUri,
       file,
-      ttl
+      ttl,
+      throttleTime
     );
+    console.log('pre-init');
     await client.initialize();
+    console.log('post-init');
     return client;
   }
   return new RaindropClient(
