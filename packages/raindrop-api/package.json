@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
   "dependencies": {

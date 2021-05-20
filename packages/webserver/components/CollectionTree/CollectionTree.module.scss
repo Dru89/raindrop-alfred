@@ -1,0 +1,35 @@
+.container {
+  display: flex;
+  justify-content: center;
+}
+
+.paper {
+  display: flex;
+  justify-content: center;
+  padding: 2em;
+  margin: 0 2em;
+  max-width: 600px;
+  flex-grow: 1;
+}
+
+.tree {
+  flex-grow: 1;
+  max-width: 400px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.labelText {
+  font-weight: inherit;
+  flex-grow: 1;
+}
+
+.icon {
+  margin-right: 8px;
+  width: 1em;
+  height: 1em;
+}

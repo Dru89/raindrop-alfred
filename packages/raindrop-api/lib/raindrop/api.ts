@@ -1,7 +1,7 @@
-import * as qs from 'querystring';
 import * as fs from 'fs/promises';
 import { homedir } from 'os';
 import { dirname } from 'path';
+import qs from 'qs';
 
 import axios, {
   AxiosInstance,
@@ -9,6 +9,7 @@ import axios, {
   CancelTokenSource,
   Method,
 } from 'axios';
+import throttle from 'lodash/throttle';
 
 import {
   AccessTokenRequest,
@@ -30,9 +31,8 @@ import {
   User,
 } from './models';
 
-import ErrorWithCause from '../ErrorWithCause';
-import { isFile, touch } from '../utils/file';
-import throttle from '../utils/throttle';
+import { RethrownError } from '../errors';
+import { isFile } from '../utils/file';
 
 interface Credentials {
   clientId: string;
@@ -51,7 +51,7 @@ interface OAuthToken {
   accessToken: string;
   refreshToken: string;
   tokenType: string;
-  expires: Date;
+  expires: number;
 }
 
 const METHODS_WITHOUT_BODIES: Method[] = [
@@ -76,14 +76,10 @@ function handleError(err: unknown): never {
       if (response.errorMessage) {
         message = `${message} ${response.errorMessage}`;
       }
-      throw new ErrorWithCause(`Raindrop.io returned error: ${message}`, {
-        cause: err,
-      });
+      throw new RethrownError(`Raindrop.io returned error: ${message}`, err);
     }
   }
-  throw new ErrorWithCause('Received unknown Raindrop.io error', {
-    cause: err,
-  });
+  throw new RethrownError('Received unknown Raindrop.io error', err);
 }
 
 export class RaindropClient {
@@ -124,14 +120,18 @@ export class RaindropClient {
       accessToken: response.access_token,
       refreshToken: response.refresh_token,
       tokenType: response.token_type,
-      expires: new Date(Date.now() + 1000 * (response.expires_in / 2)),
+      expires: new Date(
+        Date.now() + 1000 * (response.expires_in / 2)
+      ).getTime(),
     };
   }
 
   private handleTokenRequest(data: AccessTokenRequest) {
     return this.#client
       .post<AccessTokenResponse>('https://raindrop.io/oauth/access_token', data)
-      .then((resp) => this.storeToken(resp.data))
+      .then((resp) => {
+        return this.storeToken(resp.data);
+      })
       .catch((err) => handleError(err));
   }
 
@@ -218,7 +218,7 @@ export class RaindropClient {
     let config = originalConfig ?? {};
     config = { method, url: path, ...config };
     if (METHODS_WITHOUT_BODIES.includes(method)) {
-      config = dataOrConfig as AxiosRequestConfig;
+      config = { ...config, ...(dataOrConfig as AxiosRequestConfig) };
       if (originalConfig) {
         throw new Error(
           `Too many arguments provided. ${method} requests cannot have body data.`
@@ -525,12 +525,18 @@ export class RaindropClient {
 type Cached<T> = { expires: number; data: T };
 type Cache = { token?: OAuthToken; data: Record<string, Cached<unknown>> };
 const cacheKey = (method: string, path: string, config?: AxiosRequestConfig) =>
-  `${method} ${path}?${qs.stringify(config?.params ?? '')}`;
+  `${method} ${path}?${qs.stringify(config?.params ?? {}, {
+    sort: (a, b) => String(a).localeCompare(String(b)),
+  })}`;
+
+const write = (file: string, cache: unknown) =>
+  fs.writeFile(file, JSON.stringify(cache, undefined, 2), { encoding: 'utf8' });
 export class CachedRaindropClient extends RaindropClient {
   #cacheFile: string;
   #ttl: number;
   #throttle: number;
   #cache: Cache;
+  readonly writeCache: () => void;
 
   constructor(
     clientId: string,
@@ -545,32 +551,22 @@ export class CachedRaindropClient extends RaindropClient {
     this.#ttl = ttl;
     this.#throttle = throttleTime;
     this.#cache = { data: {} };
+
+    this.writeCache = this.#throttle
+      ? throttle(() => write(this.#cacheFile, this.#cache))
+      : () => write(this.#cacheFile, this.#cache);
   }
 
   async initialize(): Promise<void> {
     const file = this.#cacheFile;
-    console.log('checking for file', file);
     if (!(await isFile(file))) {
-      console.log('no file!');
       await fs.mkdir(dirname(file), { recursive: true });
-      await touch(file);
+      this.writeCache();
     } else {
-      console.log('file was found!');
       const buffer = await fs.readFile(file);
       this.#cache = JSON.parse(buffer.toString('utf8')) as Cache;
+      this.token = this.#cache.token;
     }
-  }
-
-  writeCache(): void {
-    throttle(() => {
-      return fs.writeFile(
-        this.#cacheFile,
-        JSON.stringify(this.#cache, undefined, 2),
-        {
-          encoding: 'utf8',
-        }
-      );
-    }, this.#throttle);
   }
 
   cacheGet<Response>(
@@ -692,10 +688,8 @@ export async function createClient({
   credentials,
   redirectUri,
 }: ClientOptions): Promise<RaindropClient> {
-  console.log('baaaaar');
   if (cache) {
     const file = typeof cache === 'string' ? cache : DEFAULT_CACHE_FILE;
-    console.log('pre-new');
     const client = new CachedRaindropClient(
       credentials.clientId,
       credentials.clientSecret,
@@ -704,9 +698,7 @@ export async function createClient({
       ttl,
       throttleTime
     );
-    console.log('pre-init');
     await client.initialize();
-    console.log('post-init');
     return client;
   }
   return new RaindropClient(

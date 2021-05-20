@@ -1,0 +1,12 @@
+.wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.greeting {
+  padding: 2em;
+  margin: 2em;
+  text-align: center;
+  max-width: 800px;
+  flex: 1;
+}

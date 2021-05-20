@@ -1,12 +1,11 @@
-import { createClient, User } from '@dru89/raindrop-api';
+import { User } from '@dru89/raindrop-api';
 import { Typography } from '@material-ui/core';
-import { AddressInfo } from 'net';
-import { GetServerSideProps, GetServerSidePropsContext } from 'next';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
-import { TLSSocket } from 'tls';
+
 import AuthError from '../components/AuthError';
 import Link from '../components/Link';
-import styles from '../styles/Home.module.css';
+import createRaindropClient from '../utils/createRaindropClient';
 
 interface ErrorProps {
   error: true;
@@ -23,7 +22,7 @@ type Props = ErrorProps | SuccessProps;
 
 export default function Home(props: Props): JSX.Element {
   return (
-    <div className={styles.container}>
+    <div>
       <Head>
         <title>Raindrop Alfred Thing</title>
         <meta
@@ -36,7 +35,7 @@ export default function Home(props: Props): JSX.Element {
         />
       </Head>
 
-      <main className={styles.main}>
+      <main>
         <Typography component="h1" variant="h2">
           {props.error ? '😬 Whoops! Something went wrong!' : '👋 Hey there!'}
         </Typography>
@@ -62,33 +61,8 @@ export default function Home(props: Props): JSX.Element {
   );
 }
 
-function getRedirectUri(ctx: GetServerSidePropsContext) {
-  const protocol = (ctx.req.socket as TLSSocket).encrypted ? 'https' : 'http';
-  const port =
-    (ctx.req.socket.address() as AddressInfo).port ??
-    process.env.DEFAULT_PORT ??
-    3000;
-  const host = ctx.req.headers.host ?? `localhost:${port}`;
-  return `${protocol}://${host}/callback`;
-}
-
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  if (!process.env.RAINDROP_CLIENT_ID) {
-    throw new Error('RAINDROP_CLIENT_ID was not set');
-  }
-  if (!process.env.RAINDROP_CLIENT_SECRET) {
-    throw new Error('RAINDROP_ CLIENT_SECRET was not set');
-  }
-
-  console.log('fooooooo');
-  const client = await createClient({
-    credentials: {
-      clientId: process.env.RAINDROP_CLIENT_ID,
-      clientSecret: process.env.RAINDROP_CLIENT_SECRET,
-    },
-    redirectUri: getRedirectUri(ctx),
-  });
-
+  const client = await createRaindropClient(ctx);
   const authUrl = client.createAuthUrl();
 
   const { code, error } = ctx.query;
@@ -127,7 +101,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   try {
     const response = await client.getUser();
+    // eslint-disable-next-line no-underscore-dangle
+    console.info(`Successfully logged in ${response.user._id}`);
     return {
+      redirect: {
+        destination: '/',
+      },
       props: {
         error: false,
         user: response.user,
