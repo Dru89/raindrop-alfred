@@ -1,35 +1,41 @@
 import { GetServerSideProps, NextPage } from 'next';
-import type { Collection } from '@dru89/raindrop-api';
+import Head from 'next/head';
+import * as iter from '@dru89/iter';
+import type { Collection as RaindropCollection } from '@dru89/raindrop-api';
 
 import Greeting from '../components/Greeting';
-import CollectionTree from '../components/CollectionTree';
 import createRaindropClient from '../utils/createRaindropClient';
+import CollectionPicker from '../components/CollectionPicker/CollectionPicker';
+import { Collection, Group } from '../types/raindrop-elements';
+import computeGroupId from '../utils/computeGroupId';
 
 interface Props {
   user: {
     name: string;
     email: string;
   };
-  groups: Array<{
-    name: string;
-    collections: number[];
-  }>;
-  collections: Array<{
-    id: number;
-    color: string;
-    name: string;
-    icon: string;
-    parent?: number;
-    count: number;
-    children: number[];
-  }>;
+  groups: Group[];
+  collections: Collection[];
+  selected: string[];
 }
 
-const Index: NextPage<Props> = ({ user, groups, collections }: Props) => {
+const Index: NextPage<Props> = ({
+  user,
+  groups,
+  collections,
+  selected,
+}: Props) => {
   return (
     <div>
+      <Head>
+        <title>⚙️ Raindrop Configuration</title>
+      </Head>
       <Greeting user={user} />
-      <CollectionTree groups={groups} collections={collections} />
+      <CollectionPicker
+        groups={iter.toMap(groups, 'computedId')}
+        collections={iter.toMap(collections, (c) => String(c.id))}
+        defaultSelected={selected}
+      />
     </div>
   );
 };
@@ -61,7 +67,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   const allCollections = collections.items.concat(children.items);
 
-  const totalCount = (collection: Collection): number =>
+  const totalCount = (collection: RaindropCollection): number =>
     collection.count +
     sum(
       // eslint-disable-next-line no-underscore-dangle
@@ -75,11 +81,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 
   return {
     props: {
+      // TODO: preserve selection.
+      selected: [],
       user: {
         name: user.fullName,
         email: user.email,
       },
       groups: user.groups.map((group) => ({
+        computedId: computeGroupId(group),
         name: group.title,
         count: sum(
           group.collections.map((id) => {

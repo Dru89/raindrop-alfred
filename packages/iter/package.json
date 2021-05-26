@@ -1,10 +1,10 @@
 {
-  "name": "@dru89/raindrop-api",
+  "name": "@dru89/iter",
   "version": "0.0.0",
   "private": true,
   "description": "> TODO: description",
-  "author": "Drew Hays <me@dru89.com>",
-  "homepage": "",
+  "author": "Drew Hays <drewshays@gmail.com>",
+  "homepage": "https://github.com/Dru89/raindrop-alfred#readme",
   "license": "ISC",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,13 +15,22 @@
     "lib": "lib",
     "test": "__tests__"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dru89/raindrop-alfred.git"
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "tsc",
     "test": "echo \"Error: run tests from root\" && exit 1"
   },
+  "bugs": {
+    "url": "https://github.com/Dru89/raindrop-alfred/issues"
+  },
   "dependencies": {
-    "@dru89/logger": "^0.0.0",
-    "axios": "^0.21.1"
+    "@dru89/logger": "^0.0.0"
   }
 }

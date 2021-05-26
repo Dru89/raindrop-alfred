@@ -26,7 +26,7 @@ const Greeting = ({ user }: Props): JSX.Element => {
             (And your email address as <code>{user.email}</code>.)
           </Typography>
         </header>
-        <Typography variant="body1">
+        <Typography variant="body1" className={styles.notRight}>
           If that doesn’t look right to you, please{' '}
           <Link href="/logout">log out</Link> and try again.
         </Typography>

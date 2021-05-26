@@ -1,0 +1,40 @@
+{
+  "name": "@dru89/logger",
+  "version": "0.0.0",
+  "private": true,
+  "description": "> TODO: description",
+  "author": "Drew Hays <drewshays@gmail.com>",
+  "homepage": "https://github.com/Dru89/raindrop-alfred#readme",
+  "license": "ISC",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dru89/raindrop-alfred.git"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "tsc",
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/Dru89/raindrop-alfred/issues"
+  },
+  "dependencies": {
+    "safe-stable-stringify": "^1.1.1",
+    "triple-beam": "^1.3.0",
+    "winston": "^3.3.3",
+    "winston-transport": "^4.4.0",
+    "winston-transport-browserconsole": "^1.0.5"
+  }
+}

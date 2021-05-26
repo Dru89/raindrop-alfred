@@ -6,14 +6,12 @@
   "author": "Drew Hays <me@dru89.com>",
   "homepage": "",
   "license": "ISC",
-  "main": "lib/webserver.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "directories": {
     "lib": "lib",
     "test": "__tests__"
   },
-  "files": [
-    "lib"
-  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -21,12 +19,14 @@
     "prepare": "rm -rf .next && npm run build"
   },
   "dependencies": {
+    "@dru89/iter": "^0.0.0",
+    "@dru89/logger": "^0.0.0",
     "@dru89/raindrop-api": "^0.0.0",
     "@emotion/react": "^11.4.0",
     "@emotion/styled": "^11.3.0",
-    "@material-ui/core": "^5.0.0-alpha.34",
-    "@material-ui/icons": "^5.0.0-alpha.34",
-    "@material-ui/lab": "^5.0.0-alpha.34",
+    "@material-ui/core": "https://pkg.csb.dev/mui-org/material-ui/commit/6bf227e0/@material-ui/core",
+    "@material-ui/icons": "https://pkg.csb.dev/mui-org/material-ui/commit/6bf227e0/@material-ui/icons",
+    "@material-ui/lab": "https://pkg.csb.dev/mui-org/material-ui/commit/6bf227e0/@material-ui/lab",
     "clsx": "^1.1.1",
     "lodash": "^4.17.21",
     "next": "10.2.0",
